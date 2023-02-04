@@ -1,24 +1,36 @@
-use tokio::sync::oneshot;
+use coerce::actor::new_actor;
+use tokio::sync::mpsc;
+
+pub struct EchoActor{}
+
+#[async_trait]
+impl Actor for EchoActor{}
+
+pub struct EchoMessage(String);
+
+impl Message for EchoMessage {
+    type Result = String;
+}
+
+#[async_trait]
+impl Handler<EchoMessage> for EchoActor{
+    async fn handle(
+        &mut self,
+        message: EchoMessage,
+        _ctx: &mut ActorContext,
+    ) -> String {
+        message.0.clone()
+    }
+}
 
 #[tokio::main]
 async fn main(){
-    let (tx1, rx1) = oneshot::channel();
-    let (tx2, rx2) = oneshot::channel();
 
-    tokio::spawn(async    {
-        let _= tx1.send("one");
-    });
+    let actor = new_actor(EchoActor {}).await.unwrap();
 
-    tokio::spawn(async {
-        let _ = tx2.send("two");
-    });
+    let hello_world = "hello, world".to_string();
+    let result = actor.send(EchoMessage(hello_world)).await;
 
-    tokio::select! {
-        val = rx1 => {
-            println!("rx1 here {:?}", val);
-        }
-        val = rx2 => {
-            println!("rx2 here {:?}", val)
-        }
-    }
+    println!("{:?}", result);
+
 }
